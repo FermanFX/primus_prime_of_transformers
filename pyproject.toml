@@ -1,0 +1,24 @@
+[tool.ruff]
+# Exclude Jupyter Notebooks and notebook directories from linting
+exclude = [
+    "*.ipynb",
+    "notebooks",
+    "notebook",
+]
+
+[tool.mypy]
+# Exclude notebook directories from type checking
+exclude = [
+    'notebooks/',
+    'notebook/',
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+# Exclude notebook directories from test discovery
+norecursedirs = [
+    "notebooks",
+    "notebook",
+]
+# Default execution arguments
+addopts = "--cov=. --cov-report=term-missing"
