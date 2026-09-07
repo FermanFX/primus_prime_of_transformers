@@ -1,0 +1,76 @@
+# ============================================================
+# BATCH TRAINING CONFIGURATION (with Loss Functions)
+# ============================================================
+
+global:
+  epochs: 100
+  device: "mps"
+  log_memory: true
+  verbose: true
+  log_level: "DEBUG"
+  
+  # ============================================================
+  # LOSS FUNCTION CONFIGURATION
+  # ============================================================
+  loss_function: "combo"        # cross_entropy, focal, dice, combo
+  class_weights: [0.05, 0.05, 0.9]  # Before, After, Strip
+  dice_weight: 0.5              # For combo loss
+  focal_gamma: 2.0              # For focal/combo loss
+  
+  preprocess: false
+  checkpoint_every: 1
+  early_stopping: 12
+  skip_failed: true
+  clear_memory_between_datasets: true
+  pause_between_datasets: 2
+
+datasets:
+  Brunswick:
+    epochs: 40
+    log_memory: true
+  
+  Halfmile:
+    log_level: "DEBUG"
+  
+  Lalor:
+    batch_size_override: 2
+    model_override: "tiny"
+    preprocess: true
+  
+  Sudbury:
+    epochs: 25
+    device: "cpu"
+
+# ============================================================
+# AUTO-CONFIG SETTINGS (with Loss Awareness)
+# ============================================================
+auto:
+  strategy: "smart"
+  memory_usage: 0.85
+  
+  # Loss function can be overridden per dataset
+  loss_overrides:
+    Lalor:
+      loss_function: "dice"      # Use Dice for large dataset
+      class_weights: [0.05, 0.05, 0.9]
+    
+    Sudbury:
+      loss_function: "focal"
+      focal_gamma: 3.0
+    
+    Halfmile:
+      loss_function: "combo"
+      dice_weight: 0.6
+  
+  model_order:
+    - "pico"
+    - "nano"
+    - "tiny"
+    - "mpslight"
+    - "light"
+    - "mobile"
+    - "efficient"
+    - "unet"
+  
+  skip_for_large:
+    # - "unet"
