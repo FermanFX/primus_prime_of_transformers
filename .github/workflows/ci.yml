@@ -25,9 +25,15 @@ jobs:
           pip install ruff mypy pytest pytest-cov
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Linting (Ruff)
+      - name: Linting and Fixing (Ruff)
         run: |
-          ruff check . --exclude "*.ipynb" --exclude "notebooks/"
+          ruff check . --exclude "*.ipynb" --exclude "notebooks/" --fix
+
+      - name: Commit and push changes if any
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-fix ruff formatting errors"
+          branch: ${{ github.head_ref || github.ref_name }}
 
       - name: Type Checking (Mypy)
         run: |
