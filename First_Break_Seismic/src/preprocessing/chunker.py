@@ -1,12 +1,9 @@
 """
 Chunk assignment logic for splitting data into train/val/test.
 """
-
 from typing import Any
-
 import numpy as np
 from loguru import logger
-
 
 class Chunker:
     """Assign shots to chunks and splits."""
