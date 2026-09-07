@@ -29,12 +29,6 @@ jobs:
         run: |
           ruff check . --exclude "*.ipynb" --exclude "notebooks/" --fix
 
-      - name: Commit and push changes if any
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "style: auto-fix ruff formatting errors"
-          branch: ${{ github.head_ref || github.ref_name }}
-
       - name: Type Checking (Mypy)
         run: |
           mypy . --exclude "notebooks/"
