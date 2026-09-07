@@ -1,5 +1,7 @@
 import pytest
+
 from src.config import SeismicConfig
+
 
 class TestSeismicConfig:
     """Tests for SeismicConfig."""
