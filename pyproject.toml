@@ -43,6 +43,10 @@ python_version = "3.13"
 ignore_missing_imports = false
 
 [[tool.mypy.overrides]]
+module = "h5py.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = ["torchvision.models"]
 ignore_missing_imports = true
 
