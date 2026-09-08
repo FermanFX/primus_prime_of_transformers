@@ -304,4 +304,4 @@ class ShotProcessor:
 
     def reset_stats(self) -> None:
         """Reset and clear all accumulated processing statistics."""
-        self.stats: list[dict] = []  
+        self.stats = [] 
