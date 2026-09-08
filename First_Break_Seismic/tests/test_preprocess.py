@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 import yaml
 from click.testing import CliRunner
-
+from scripts.preprocess import main
 from src.config import SeismicConfig
 
 
@@ -74,8 +74,6 @@ def sample_config(tmp_path: Path, synthetic_hdf5: Path) -> tuple:
 
 def test_cli_help() -> None:
     """Test CLI argument parsing and help message."""
-    from scripts.preprocess import main
-
     runner = CliRunner()
     result = runner.invoke(main, ["--help"])
     assert result.exit_code == 0
@@ -84,7 +82,6 @@ def test_cli_help() -> None:
 
 def test_pipeline_end_to_end(sample_config: tuple) -> None:
     """Test preprocessing pipeline from HDF5 to chunks and manifest generation."""
-    from scripts.preprocess import main
 
     config_path, output_dir = sample_config
     runner = CliRunner()
@@ -109,7 +106,6 @@ def test_pipeline_end_to_end(sample_config: tuple) -> None:
 
 def test_force_reprocess_flag(sample_config: tuple) -> None:
     """Verify that the --force flag correctly forces reprocessing."""
-    from scripts.preprocess import main
 
     config_path, output_dir = sample_config
     runner = CliRunner()
@@ -128,8 +124,6 @@ def test_force_reprocess_flag(sample_config: tuple) -> None:
 
 def test_invalid_hdf5_error_handling(tmp_path: Path) -> None:
     """Test error handling when an invalid or corrupted HDF5 file is provided via config."""
-    from scripts.preprocess import main
-
     runner = CliRunner()
 
     invalid_file = tmp_path / "invalid.h5"
