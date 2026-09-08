@@ -11,6 +11,103 @@ from torchvision.models import EfficientNet_B0_Weights, efficientnet_b0
 class EfficientUNet(nn.Module):
     """
     EfficientNet encoder + U-Net decoder.
+
+    EfficientNet-B0 encoder with a U-Net-style decoder for seismic image
+segmentation.
+
+This module implements a semantic segmentation model that combines the
+efficient feature extraction capabilities of EfficientNet-B0 with a
+U-Net-style decoder. Multi-scale feature maps from the EfficientNet encoder
+are used as skip connections to progressively recover spatial details during
+decoding.
+
+The model is designed primarily for seismic image segmentation and supports
+single-channel input data by using a trainable convolutional stem to convert
+the input to the three channels expected by the ImageNet-pretrained
+EfficientNet-B0 encoder.
+
+Architecture:
+Input
+↓
+Input Stem
+└── in_channels → 3 channels
+↓
+EfficientNet-B0 Encoder
+├── enc1: 32 → 16 channels
+├── enc2: 24 channels
+├── enc3: 40 channels
+├── enc4: 80 channels
+├── enc5: 112 channels
+├── enc6: 192 channels
+├── enc7: 320 channels
+└── enc8: 1280 channels
+↓
+U-Net Decoder
+├── dec8: 1280 → 320
+├── dec7: 640 → 192
+├── dec6: 384 → 112
+├── dec5: 224 → 80
+├── dec4: 160 → 40
+├── dec3: 80 → 24
+├── dec2: 48 → 16
+└── dec1: 32 → 16
+↓
+Output Convolution
+└── 16 → out_channels
+↓
+Segmentation logits
+
+Args:
+in_channels (int):
+Number of input image channels. Defaults to 1, which is suitable
+for single-channel seismic data.
+
+out_channels (int):
+    Number of segmentation classes. Defaults to 3.
+
+pretrained (bool):
+    If True, initializes the EfficientNet-B0 encoder with ImageNet
+    pretrained weights. If False, the encoder is initialized without
+    pretrained weights. Defaults to True.
+
+Input:
+Tensor of shape (B, in_channels, H, W), where B is the batch size and
+H and W are the spatial dimensions of the input seismic image.
+
+Output:
+Tensor of shape (B, out_channels, H, W) containing the segmentation
+logits for each output class.
+
+Notes:
+- The input is automatically padded so that its height and width are
+divisible by 32.
+- Padding is removed from the final output so that the output spatial
+dimensions match the original input dimensions.
+- A trainable convolutional stem converts the input from
+in_channels to 3 channels for compatibility with EfficientNet-B0.
+- The EfficientNet-B0 encoder can be initialized with ImageNet
+pretrained weights.
+- Encoder parameters are trainable by default. They can be frozen
+manually if required.
+- Bilinear interpolation is used to align encoder feature maps with
+decoder feature maps before skip-connection concatenation.
+- Transposed convolutions are used to progressively increase the
+spatial resolution in the decoder.
+- The final layer produces raw segmentation logits. An activation such
+as softmax should be applied externally when class probabilities are
+required.
+
+Example:
+>>> model = EfficientUNet(
+... in_channels=1,
+... out_channels=3,
+... pretrained=True,
+... )
+>>> x = torch.randn(2, 1, 512, 512)
+>>> y = model(x)
+>>> y.shape
+torch.Size([2, 3, 512, 512])
+    
     """
 
     def __init__(
