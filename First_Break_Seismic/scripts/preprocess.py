@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Preprocessing pipeline for seismic data.
 Converts HDF5 to chunked PyTorch tensors.
