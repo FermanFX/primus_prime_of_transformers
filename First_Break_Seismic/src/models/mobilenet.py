@@ -11,6 +11,80 @@ from torchvision.models import MobileNet_V2_Weights, mobilenet_v2
 class MobileUNet(nn.Module):
     """
     MobileNetV2 encoder + U-Net decoder.
+
+    MobileNetV2 encoder with a U-Net-style decoder for semantic segmentation.
+
+This model is designed for semantic segmentation of seismic images. It uses
+a pretrained MobileNetV2 as the encoder and a U-Net-style decoder with skip
+connections to progressively restore the spatial resolution of the feature
+maps.
+
+Architecture:
+Input
+↓
+1-channel → 3-channel stem
+↓
+MobileNetV2 Encoder
+├── enc1: 16 channels
+├── enc2: 24 channels
+├── enc3: 32 channels
+├── enc4: 96 channels
+└── enc5: 320 channels
+↓
+U-Net Decoder
+├── dec5: 320 → 64
+├── dec4: 160 → 32
+├── dec3: 64 → 24
+├── dec2: 48 → 16
+└── dec1: 32 → 16
+↓
+Output convolution
+↓
+Segmentation mask
+
+Input:
+Tensor of shape (B, in_channels, H, W).
+
+If H or W is not divisible by 32, the input is automatically padded
+with zeros to the nearest dimensions divisible by 32.
+
+Output:
+Tensor of shape (B, out_channels, H, W), where H and W correspond to
+the original input spatial dimensions.
+
+Args:
+in_channels (int):
+Number of input channels. Defaults to 1, which is suitable for
+single-channel seismic data.
+
+out_channels (int):
+    Number of output segmentation classes. Defaults to 3.
+
+pretrained (bool):
+    Whether to initialize the MobileNetV2 encoder with ImageNet
+    pretrained weights. Defaults to True.
+
+Notes:
+- The MobileNetV2 encoder weights are frozen during training.
+- A trainable convolutional stem converts single-channel input to
+the three channels expected by MobileNetV2.
+- Encoder feature maps are used as skip connections in the decoder.
+- ConvTranspose2d layers are used to progressively increase spatial
+resolution.
+- The final output is cropped back to the original input dimensions
+after padding.
+
+Example:
+>>> model = MobileUNet(
+... in_channels=1,
+... out_channels=3,
+... pretrained=True,
+... )
+>>> x = torch.randn(2, 1, 512, 512)
+>>> y = model(x)
+>>> y.shape
+torch.Size([2, 3, 512, 512])
+    
     """
 
     def __init__(

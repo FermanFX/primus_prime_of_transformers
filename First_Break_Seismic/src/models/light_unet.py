@@ -11,6 +11,13 @@ class DepthwiseSeparableConv(nn.Module):
     """
     Depthwise separable convolution: depthwise + pointwise.
     This reduces parameters by ~1/8 compared to standard conv.
+    Lightweight U-Net variants for seismic image segmentation.
+
+    This module provides two lightweight U-Net architectures designed for
+    semantic segmentation of seismic images. Both models use encoder-decoder
+    architectures with skip connections, while reducing computational cost
+    through smaller channel sizes and, in the case of LightUNet, depthwise
+    separable convolutions.
     """
 
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=1):
@@ -40,6 +47,31 @@ class LightUNet(nn.Module):
     Parameters: ~2.5M
     Memory: ~150 MB
     Speed: ~2× faster than original UNet
+
+    The depthwise convolution applies a spatial convolution independently
+    to each input channel, while the pointwise convolution combines the
+    resulting features across channels. This significantly reduces the
+    number of parameters and computational cost compared with a standard
+    convolution.
+
+    Args:
+        in_channels (int):
+            Number of input channels.
+
+        out_channels (int):
+            Number of output channels.
+
+        kernel_size (int):
+            Size of the depthwise convolution kernel. Defaults to 3.
+
+        padding (int):
+            Padding applied to the depthwise convolution. Defaults to 1.
+
+    Input:
+        Tensor of shape (B, in_channels, H, W).
+
+    Output:
+        Tensor of shape (B, out_channels, H, W).
     """
 
     def __init__(
@@ -162,6 +194,49 @@ class NanoUNetLight(nn.Module):
     Parameters: ~0.8M
     Memory: ~50 MB
     Speed: ~4× faster than original UNet
+
+    This model is designed for computationally efficient semantic
+    segmentation of seismic images. It follows the standard U-Net
+    encoder-decoder structure with skip connections, while using
+    depthwise separable convolutions in the encoder and decoder to reduce
+    the number of parameters and computational cost.
+
+    The spatial resolution is reduced through four max-pooling operations
+    and subsequently restored through transposed convolutions. Bilinear
+    interpolation is used to align decoder feature maps with the spatial
+    dimensions of the corresponding encoder features before concatenation.
+
+    Args:
+        in_channels (int):
+            Number of input image channels. Defaults to 1 for single-channel
+            seismic data.
+
+    out_channels (int):
+        Number of segmentation classes. Defaults to 3.
+
+    base_channels (int):
+        Number of channels in the first encoder layer. The number of
+        channels is increased progressively at deeper levels.
+        Defaults to 16.
+
+    depth (int):
+        Number of encoder-decoder levels. Defaults to 4.
+
+    Input:
+        Tensor of shape (B, in_channels, H, W).
+
+    Output:
+        Tensor of shape (B, out_channels, H, W), corresponding to the
+        segmentation logits for each class.
+
+    Notes:
+        - The input is automatically padded so that its height and width
+      are divisible by 2^depth.
+        - The output is cropped back to the original input dimensions.
+        - Depthwise separable convolutions are used to reduce computational
+      complexity.
+        - Skip connections preserve high-resolution spatial information
+      from the encoder.
     """
 
     def __init__(self, in_channels=1, out_channels=3):
