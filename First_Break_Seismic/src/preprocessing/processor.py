@@ -2,13 +2,21 @@
 Shot processing logic for seismic data with validation and logging.
 """
 
-
 import numpy as np
 from loguru import logger
 
 
 class ShotProcessor:
-    """Process individual shots with vectorized operations and validation."""
+    """Process individual shots with vectorized operations and validation.
+
+    Attributes:
+        target_traces (int): Target number of traces per shot (padded or cropped).
+        n_samples (int): Number of time samples per trace.
+        strip_width (int): Width of the target strip around the first break pick.
+        half_width (int): Half of the strip width, used for mask calculations.
+        log_level (str): Logging level threshold for debug telemetry.
+        stats (list[dict]): Accumulated processing statistics for processed shots.
+    """
 
     def __init__(
         self,
@@ -17,6 +25,14 @@ class ShotProcessor:
         strip_width: int = 8,
         log_level: str = "INFO",
     ):
+        """Initialize the ShotProcessor.
+
+        Args:
+            target_traces (int): Target number of traces. Defaults to 1578.
+            n_samples (int): Number of time samples per trace. Defaults to 751.
+            strip_width (int): Strip width for mask generation. Defaults to 8.
+            log_level (str): Logging verbosity level. Defaults to "INFO".
+        """
         self.target_traces = target_traces
         self.n_samples = n_samples
         self.strip_width = strip_width
@@ -25,12 +41,15 @@ class ShotProcessor:
         self.stats: list[dict] = []
 
     def validate_picks(self, picks: np.ndarray) -> tuple[np.ndarray, dict]:
-        """
-        Validate and clean picks.
+        """Validate and clean first-break pick values.
+
+        Args:
+            picks (np.ndarray): Array of raw pick values.
 
         Returns:
-            cleaned_picks: Picks with invalid values clipped
-            stats: Dictionary of validation statistics
+            tuple[np.ndarray, dict]: A tuple containing:
+                - cleaned_picks: Picks with out-of-range values clipped.
+                - stats: Dictionary of validation statistics (totals, valid/invalid counts, min/max/mean/median).
         """
         total = len(picks)
         valid_mask = (picks > 0) & (picks < self.n_samples)
@@ -68,13 +87,18 @@ class ShotProcessor:
         return cleaned_picks, stats
 
     def create_mask_vectorized(self, picks: np.ndarray) -> np.ndarray:
-        """
-        Create 3-class segmentation mask using vectorized operations.
+        """Create a 3-class segmentation mask using vectorized NumPy operations.
 
         Class mapping:
-            0: Before first break
+            0: Before first break / invalid
             2: Strip around first break
             1: After first break
+
+        Args:
+            picks (np.ndarray): Cleaned array of pick values.
+
+        Returns:
+            np.ndarray: 2D integer segmentation mask of shape (n_traces, n_samples).
         """
         n_traces = len(picks)
         mask = np.zeros((n_traces, self.n_samples), dtype=np.int64)
@@ -101,7 +125,16 @@ class ShotProcessor:
     def validate_mask(
         self, mask: np.ndarray, picks: np.ndarray, shot_id: int | None = None
     ) -> bool:
-        """Validate mask quality."""
+        """Validate segmentation mask quality and check strip alignment against picks.
+
+        Args:
+            mask (np.ndarray): 2D segmentation mask.
+            picks (np.ndarray): Corresponding pick values.
+            shot_id (int | None): Optional shot ID for logging purposes.
+
+        Returns:
+            bool: True if validation passes or warnings handled, False if critical issues found.
+        """
         # Check that strip exists
         strip_count = np.sum(mask == 2)
         if strip_count == 0:
@@ -128,7 +161,14 @@ class ShotProcessor:
         return True
 
     def get_shot_statistics(self, shot_picks: np.ndarray) -> dict:
-        """Compute statistics for a shot."""
+        """Compute statistical summary for a single shot's picks.
+
+        Args:
+            shot_picks (np.ndarray): Array of pick values for the shot.
+
+        Returns:
+            dict: Dictionary containing trace counts, valid/invalid ratios, and pick distributions.
+        """
         valid_picks = shot_picks[shot_picks > 0]
 
         if len(valid_picks) > 0:
@@ -160,13 +200,18 @@ class ShotProcessor:
         shot_picks: np.ndarray,
         shot_id: int | None = None,
     ) -> tuple[np.ndarray, np.ndarray, dict]:
-        """
-        Process a single shot: validate, pad/crop, create mask.
+        """Process a single shot: validate picks, pad/crop data and picks, and generate mask.
+
+        Args:
+            shot_data (np.ndarray): 2D trace data array.
+            shot_picks (np.ndarray): 1D pick values array.
+            shot_id (int | None): Optional shot ID.
 
         Returns:
-            processed_data: (target_traces, n_samples) float32
-            processed_mask: (target_traces, n_samples) int64
-            stats: Dictionary of processing statistics
+            tuple[np.ndarray, np.ndarray, dict]: A tuple containing:
+                - processed_data: Processed float32 array of shape (target_traces, n_samples).
+                - processed_mask: Processed int64 mask array of shape (target_traces, n_samples).
+                - stats: Dictionary of processing statistics.
         """
         actual_traces = shot_data.shape[0]
 
@@ -225,7 +270,11 @@ class ShotProcessor:
         return shot_data.astype(np.float32), mask, stats
 
     def get_all_stats(self) -> dict:
-        """Get aggregate statistics for all processed shots."""
+        """Compute aggregate statistics across all processed shots.
+
+        Returns:
+            dict: Summary dictionary containing total shots, traces, valid/invalid picks, and overall ranges.
+        """
         if not self.stats:
             return {}
 
@@ -253,6 +302,6 @@ class ShotProcessor:
             "max_pick_overall": max(valid_picks) if valid_picks else None,
         }
 
-    def reset_stats(self):
-        """Reset accumulated statistics."""
-        self.stats: list[dict] = []
+    def reset_stats(self) -> None:
+        """Reset and clear all accumulated processing statistics."""
+        self.stats = [] 
