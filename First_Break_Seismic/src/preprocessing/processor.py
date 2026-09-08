@@ -302,6 +302,6 @@ class ShotProcessor:
             "max_pick_overall": max(valid_picks) if valid_picks else None,
         }
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """Reset and clear all accumulated processing statistics."""
         self.stats: list[dict] = []  
