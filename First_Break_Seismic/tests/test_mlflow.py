@@ -15,8 +15,6 @@ Covers:
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-from loguru import logger
-
 
 import pytest
 
@@ -124,7 +122,7 @@ def test_start_run_logs_parameters_and_tags(monkeypatch, manager):
     log_params.assert_called_once_with(config)
     set_tags.assert_called_once_with(tags)
 
-    # start_run also creates the start_time tag.
+    # start_run creates exactly one start_time tag.
     assert set_tag.call_count == 1
     assert set_tag.call_args.args[0] == "start_time"
 
@@ -353,22 +351,21 @@ def test_log_model_without_registry(monkeypatch, manager):
 # ============================================================
 
 
-def set_model_alias(
-    self,
-    registered_model_name: str,
-    alias: str,
-    version: int,
-) -> None:
-    """Assign an alias to a registered model version."""
+def test_set_model_alias(manager):
+    """Verify an alias is assigned to the requested model version."""
 
-    self.client.set_registered_model_alias(
-        name=registered_model_name,
-        alias=alias,
-        version=version,
+    manager.client.set_registered_model_alias = MagicMock()
+
+    manager.set_model_alias(
+        registered_model_name="halfmile-unet",
+        alias="champion",
+        version=3,
     )
-    logger.info(
-        f"Set alias '{alias}' = version {version} "
-        f"for {registered_model_name}"
+
+    manager.client.set_registered_model_alias.assert_called_once_with(
+        name="halfmile-unet",
+        alias="champion",
+        version=3,
     )
 
 
