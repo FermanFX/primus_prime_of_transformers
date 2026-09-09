@@ -4,6 +4,7 @@ Training callbacks for Seismic FBP.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 import torch
 from loguru import logger
@@ -13,19 +14,19 @@ class Callback(ABC):
     """Base class for training callbacks."""
 
     @abstractmethod
-    def on_epoch_start(self, epoch: int, **kwargs):
+    def on_epoch_start(self, epoch: int, **kwargs: Any) -> None:
         pass
 
     @abstractmethod
-    def on_epoch_end(self, epoch: int, metrics: dict[str, float], **kwargs):
+    def on_epoch_end(self, epoch: int, metrics: dict[str, float], **kwargs: Any) -> None:
         pass
 
     @abstractmethod
-    def on_batch_start(self, batch: int, **kwargs):
+    def on_batch_start(self, batch: int, **kwargs: Any) -> None:
         pass
 
     @abstractmethod
-    def on_batch_end(self, batch: int, loss: float, **kwargs):
+    def on_batch_end(self, batch: int, loss: float, **kwargs: Any) -> None:
         pass
 
 
@@ -46,14 +47,15 @@ class EarlyStoppingCallback(Callback):
         self.mode = mode
         self.verbose = verbose
 
-        self.best_value = None
+        # FIX (Sətir 62): float | None kimi elan edildi
+        self.best_value: float | None = None
         self.counter = 0
         self.should_stop = False
 
-    def on_epoch_start(self, epoch: int, **kwargs):
+    def on_epoch_start(self, epoch: int, **kwargs: Any) -> None:
         pass
 
-    def on_epoch_end(self, epoch: int, metrics: dict[str, float], **kwargs):
+    def on_epoch_end(self, epoch: int, metrics: dict[str, float], **kwargs: Any) -> None:
         current_value = metrics.get("val_loss", metrics.get("loss"))
         if current_value is None:
             return
@@ -86,10 +88,10 @@ class EarlyStoppingCallback(Callback):
                 if self.verbose:
                     logger.info(f"Early stopping triggered at epoch {epoch + 1}")
 
-    def on_batch_start(self, batch: int, **kwargs):
+    def on_batch_start(self, batch: int, **kwargs: Any) -> None:
         pass
 
-    def on_batch_end(self, batch: int, loss: float, **kwargs):
+    def on_batch_end(self, batch: int, loss: float, **kwargs: Any) -> None:
         pass
 
 
@@ -100,7 +102,7 @@ class ModelCheckpointCallback(Callback):
 
     def __init__(
         self,
-        save_dir: Path,
+        save_dir: Path | str,
         save_best: bool = True,
         save_every: int = 5,
         mode: str = "min",
@@ -115,21 +117,27 @@ class ModelCheckpointCallback(Callback):
         self.monitor = monitor
         self.verbose = verbose
 
-        self.best_value = None
-        self.best_path = None
+        # FIX (Sətir 159): float | None kimi elan edildi
+        self.best_value: float | None = None
+        self.best_path: Path | None = None
 
-    def on_epoch_start(self, epoch: int, **kwargs):
+    def on_epoch_start(self, epoch: int, **kwargs: Any) -> None:
         pass
 
+    # FIX (Sətir 124): Imza Callback imsası ilə uyğunlaşdırıldı, xüsusi parametrlər kwargs ilə çıxarılır
     def on_epoch_end(
         self,
         epoch: int,
         metrics: dict[str, float],
-        model,
-        optimizer,
-        scheduler,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
+        model = kwargs.get("model")
+        optimizer = kwargs.get("optimizer")
+        scheduler = kwargs.get("scheduler")
+
+        if model is None:
+            return
+
         # Save checkpoint every N epochs
         if (epoch + 1) % self.save_every == 0:
             ckpt_path = self.save_dir / f"checkpoint_epoch_{epoch + 1}.pt"
@@ -137,7 +145,7 @@ class ModelCheckpointCallback(Callback):
                 {
                     "epoch": epoch + 1,
                     "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict() if optimizer else None,
                     "scheduler_state_dict": scheduler.state_dict()
                     if scheduler
                     else None,
@@ -159,22 +167,22 @@ class ModelCheckpointCallback(Callback):
                 self.best_value = current_value
                 self._save_best(model, epoch + 1, metrics)
 
-    def _save_best(self, model, epoch, metrics):
+    def _save_best(self, model: Any, epoch: int, metrics: dict[str, float]) -> None:
         """Save the best model."""
         self.best_path = self.save_dir / "best_model.pt"
         torch.save(
             {"epoch": epoch, "model_state_dict": model.state_dict(), **metrics},
             self.best_path,
         )
-        if self.verbose:
+        if self.verbose and self.best_value is not None:
             logger.info(
                 f"Best model saved: {self.best_path} ({self.monitor}: {self.best_value:.4f})"
             )
 
-    def on_batch_start(self, batch: int, **kwargs):
+    def on_batch_start(self, batch: int, **kwargs: Any) -> None:
         pass
 
-    def on_batch_end(self, batch: int, loss: float, **kwargs):
+    def on_batch_end(self, batch: int, loss: float, **kwargs: Any) -> None:
         pass
 
 
@@ -185,8 +193,8 @@ class LoggingCallback(Callback):
 
     def __init__(
         self,
-        writer=None,
-        mlflow_manager=None,
+        writer: Any = None,
+        mlflow_manager: Any = None,
         log_every: int = 10,
         verbose: bool = True,
     ):
@@ -194,12 +202,13 @@ class LoggingCallback(Callback):
         self.mlflow_manager = mlflow_manager
         self.log_every = log_every
         self.verbose = verbose
+        # FIX (Sətir 197): Boş siyahıya tip elanı əlavə edildi
+        self.batch_losses: list[float] = []
+
+    def on_epoch_start(self, epoch: int, **kwargs: Any) -> None:
         self.batch_losses = []
 
-    def on_epoch_start(self, epoch: int, **kwargs):
-        self.batch_losses = []
-
-    def on_epoch_end(self, epoch: int, metrics: dict[str, float], **kwargs):
+    def on_epoch_end(self, epoch: int, metrics: dict[str, float], **kwargs: Any) -> None:
         # Log to TensorBoard
         if self.writer:
             for key, value in metrics.items():
@@ -213,10 +222,10 @@ class LoggingCallback(Callback):
             metrics_str = ", ".join([f"{k}={v:.4f}" for k, v in metrics.items()])
             logger.info(f"Epoch {epoch + 1}: {metrics_str}")
 
-    def on_batch_start(self, batch: int, **kwargs):
+    def on_batch_start(self, batch: int, **kwargs: Any) -> None:
         pass
 
-    def on_batch_end(self, batch: int, loss: float, **kwargs):
+    def on_batch_end(self, batch: int, loss: float, **kwargs: Any) -> None:
         self.batch_losses.append(loss)
 
         if (batch + 1) % self.log_every == 0:
