@@ -190,3 +190,5 @@ zipp==4.1.0
 mypy>=1.10.0
 types-PyYAML>=6.0.12.12
 types-tqdm>=4.66.0.0
+psutil==7.0.0
+types-psutil==7.0.0.20250901
