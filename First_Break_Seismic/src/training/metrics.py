@@ -1,11 +1,11 @@
 """
 Evaluation metrics for seismic FBP.
 """
+from typing import Any
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-
 
 class SegmentationMetrics:
     """
@@ -41,7 +41,7 @@ class SegmentationMetrics:
                 self.confusion_matrix[t, p] += 1
             self.total_pixels += 1
 
-    def compute(self) -> dict[str, float]:
+    def compute(self) -> dict[str, float | list[float]]:
         """Compute all metrics."""
         cm = self.confusion_matrix
 
@@ -142,7 +142,7 @@ class FirstBreakMetrics:
                 "median_absolute_error": 0.0,
                 "max_absolute_error": 0.0,
                 "min_absolute_error": 0.0,
-                "total_traces": 0,
+                "total_traces": 0.0,
             }
 
         errors = np.array(self.errors)
@@ -155,7 +155,7 @@ class FirstBreakMetrics:
             "median_absolute_error": float(np.median(errors)),
             "max_absolute_error": float(np.max(errors)),
             "min_absolute_error": float(np.min(errors)),
-            "total_traces": self.total_traces,
+            "total_traces": float(self.total_traces),
         }
 
 
