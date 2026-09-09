@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Training script for seismic FBP with U-Net.
 """
