@@ -4,7 +4,7 @@ Centralized logging configuration using Loguru with date-based folders and confi
 
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from loguru import logger
@@ -45,11 +45,11 @@ class SeismicLogger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
         # Create date-based subdirectory
-        self.date_dir = self.log_dir / datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        self.date_dir = self.log_dir / datetime.now(UTC).strftime("%Y-%m-%d")
         self.date_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate timestamp
-        self.timestamp = datetime.now(timezone.utc).strftime("%H-%M-%S")
+        self.timestamp = datetime.now(UTC).strftime("%H-%M-%S")
 
         # Setup logging
         self._setup_logger()
