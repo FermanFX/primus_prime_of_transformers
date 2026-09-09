@@ -254,20 +254,23 @@ class MLflowManager:
         self,
         registered_model_name: str,
         alias: str,
-        version: int,
+        version: int | str,
     ) -> None:
-        """Assign an alias to a registered model version."""
+         """Assign an alias to a registered model version."""
 
-        self.client.set_registered_model_alias(
-        name=registered_model_name,
-        alias=alias,
-        version=int(version),
+         version_str = str(version)
+
+         self.client.set_registered_model_alias(
+         name=registered_model_name,
+         alias=alias,
+         version=version_str,
     )
 
-        logger.info(
-         f"Set alias '{alias}' = version {version} "
-         f"for {registered_model_name}"
+         logger.info(
+            f"Set alias '{alias}' = version {version_str} "
+            f"for {registered_model_name}"
     )
+
 
 
     def get_model_by_alias(
