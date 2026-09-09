@@ -421,12 +421,13 @@ def main(
     # Optimizer and loss (using configurable class weights)
     optimizer = torch.optim.Adam(model_obj.parameters(), lr=cfg.learning_rate)
 
-    device = torch.device(cfg.device)
-    class_weights_tensor = torch.tensor(cfg.class_weights, dtype=torch.float32).to(
-        device
-    )
+    torch_device = torch.device(cfg.device)
+    class_weights_tensor = torch.tensor(
+        cfg.class_weights, dtype=torch.float32
+    ).to(torch_device)
+
     criterion = create_loss_function(cfg)
-    criterion = criterion.to(device)
+    criterion = criterion.to(torch_device)
 
     logger.info(f"\nClass weights: {class_weights_tensor.tolist()}")
 
