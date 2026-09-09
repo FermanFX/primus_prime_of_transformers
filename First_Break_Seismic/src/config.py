@@ -1,5 +1,13 @@
 """
-Configuration management for Seismic FBP pipeline.
+Configuration management for the Seismic FBP pipeline.
+
+This module defines the :class:`SeismicConfig` dataclass, which stores,
+validates, and serializes all configuration parameters required by the
+seismic first-break picking (FBP) pipeline.
+
+The configuration includes dataset processing, training, loss functions,
+learning-rate scheduling, regularization, early stopping, logging, and
+debugging options.
 """
 
 import hashlib
@@ -11,7 +19,92 @@ from typing import Any
 
 @dataclass
 class SeismicConfig:
-    """Main configuration class for seismic FBP pipeline."""
+    """Central configuration for the seismic FBP training pipeline.
+
+    This class provides a single, validated configuration object for
+    dataset preprocessing, model training, loss calculation, learning-rate
+    scheduling, checkpoint management, logging, and debugging.
+
+    Configuration values are validated automatically during initialization.
+    Required output directories are also created automatically.
+
+    Attributes:
+        dataset_name: Name of the seismic dataset.
+        hdf5_path: Path to the source HDF5 dataset.
+        chunk_dir: Directory containing preprocessed data chunks.
+        preprocess: Whether preprocessing should be performed.
+        force_reprocess: Whether existing preprocessed chunks should be
+            regenerated.
+
+        target_traces: Number of seismic traces used by the pipeline.
+        n_samples: Number of samples per seismic trace.
+        strip_width: Width of the seismic strip used for processing.
+            Must be a positive even number.
+        chunk_size: Number of samples/traces processed in a chunk.
+        random_seed: Random seed used for reproducibility.
+        train_split: Fraction of data allocated to training.
+        val_split: Fraction of data allocated to validation.
+        test_split: Fraction of data allocated to testing.
+
+        batch_size: Number of samples processed in each training batch.
+        learning_rate: Initial optimizer learning rate.
+        n_epochs: Maximum number of training epochs.
+        device: Computation device. Supported values are ``"cpu"``,
+            ``"cuda"``, and ``"mps"``.
+        num_workers: Number of worker processes used by data loaders.
+        multi_gpu: Whether multi-GPU training is enabled.
+        gpu_ids: Optional list of GPU device IDs.
+
+        class_weights: Per-class weights used by the classification loss.
+
+        model_registry_dir: Directory used for model registry metadata.
+        checkpoint_dir: Directory used to store training checkpoints.
+        checkpoint_every: Frequency, in epochs, for saving checkpoints.
+
+        cache_size: Maximum number of data chunks kept in memory.
+
+        lr_scheduler: Learning-rate scheduler type. Supported values are
+            ``"step"``, ``"plateau"``, and ``"cosine"``.
+        lr_patience: Number of epochs without improvement before reducing
+            the learning rate when using the plateau scheduler.
+        lr_factor: Multiplicative factor used when reducing the learning
+            rate.
+        lr_step_size: Number of epochs between learning-rate reductions
+            for the step scheduler.
+        lr_gamma: Multiplicative factor used by the step scheduler.
+        lr_T_max: Maximum number of iterations/epochs for the cosine
+            scheduler.
+
+        loss_function: Name of the loss function used during training.
+        dice_weight: Weight assigned to the Dice component of the loss.
+        focal_gamma: Focusing parameter used by focal loss.
+
+        gradient_clip_value: Maximum gradient norm used for gradient
+            clipping. ``None`` disables gradient clipping.
+
+        early_stopping_patience: Number of epochs without sufficient
+            improvement before stopping training. ``None`` disables early
+            stopping.
+        early_stopping_min_delta: Minimum change considered an improvement
+            for early stopping.
+
+        tensorboard_log_dir: Directory for TensorBoard logs.
+        mlflow_experiment_name: Name of the MLflow experiment.
+        log_dir: Directory for application log files.
+        log_level: Logging verbosity level.
+        log_memory: Whether memory usage should be logged.
+        log_predictions_every: Frequency, in epochs, for logging model
+            predictions.
+        log_metrics_every: Frequency, in epochs, for logging metrics.
+        log_gradients: Whether model gradients should be logged.
+
+        verbose_training: Whether detailed training information is printed.
+        log_batch_every: Frequency, in batches, for batch-level logging.
+            ``None`` disables batch-level logging.
+
+    Raises:
+        ValueError: If any configuration parameter is invalid.
+    """
 
     # === Dataset ===
     dataset_name: str = "Halfmile"
@@ -84,7 +177,16 @@ class SeismicConfig:
     log_batch_every: int | None = None  # None = disabled
 
     def __post_init__(self):
-        """Validate configuration parameters."""
+        """Validate configuration and create required directories.
+
+        This method is called automatically by ``dataclass`` after object
+        initialization. It validates dataset dimensions, train/validation/
+        test split ratios, training parameters, loss weights, logging level,
+        scheduler type, and computation device.
+
+        Raises:
+            ValueError: If one or more configuration values are invalid.
+        """
         # Data validation
         if self.target_traces <= 0:
             raise ValueError(
@@ -159,7 +261,14 @@ class SeismicConfig:
         Path(self.log_dir).mkdir(parents=True, exist_ok=True)
 
     def get_config_hash(self) -> str:
-        """Generate a unique hash for this configuration."""
+        """Generate a short deterministic hash of key configuration values.
+
+        The hash is useful for identifying experiments that use different
+        model-training or dataset parameters.
+
+        Returns:
+            An 8-character hexadecimal MD5 hash.
+        """
         config_dict = {
             "dataset_name": self.dataset_name,
             "target_traces": self.target_traces,
@@ -175,16 +284,32 @@ class SeismicConfig:
         ).hexdigest()[:8]
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert config to dictionary for logging."""
+        """Convert the configuration to a dictionary.
+
+        Private attributes, if any, are excluded from the resulting
+        dictionary.
+
+        Returns:
+            Dictionary containing all public configuration values.
+        """
         return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
     def to_yaml(self) -> str:
-        """Convert config to YAML string."""
+        """Serialize the configuration to a YAML-formatted string.
+
+        Returns:
+            YAML representation of the current configuration.
+        """
         import yaml
 
         return yaml.dump(self.to_dict(), default_flow_style=False, indent=2)
 
     def __repr__(self) -> str:
-        """Human-readable representation."""
+        """Return a human-readable representation of the configuration.
+
+        Returns:
+            A string containing the class name and all public configuration
+            values.
+        """
         items = [f"{k}={v}" for k, v in self.to_dict().items()]
         return f"SeismicConfig({', '.join(items)})"
