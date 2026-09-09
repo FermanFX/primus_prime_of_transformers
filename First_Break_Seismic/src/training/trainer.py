@@ -23,11 +23,7 @@ from src.training.metrics import (
     compute_weight_norm,
 )
 from src.utils.logger import get_logger
-from src.utils.mlflow_utils import (
-    format_model_name,
-    format_registered_model_name,
-    get_mlflow_manager,
-)
+from src.utils.mlflow_utils import MLflowManager
 
 logger = get_logger()
 
@@ -77,7 +73,7 @@ class SeismicTrainer:
         self.writer = SummaryWriter(log_dir=str(self.tb_dir))
 
         # Initialize MLflow manager with all features
-        self.mlflow_manager = get_mlflow_manager(
+        self.mlflow_manager = MLflowManager(
             experiment_name=config.mlflow_experiment_name,
             enable_system_metrics=True,
             enable_autolog=True,
@@ -224,7 +220,7 @@ class SeismicTrainer:
             y = y.contiguous()
 
             self.optimizer.zero_grad()
-            outputs = self.model(x)
+            outputs: torch.Tensor | None = self.model(x)
 
             has_components = getattr(self.criterion, "return_components", False)
             if has_components:
@@ -260,8 +256,9 @@ class SeismicTrainer:
             num_batches += 1
 
             # Update segmentation metrics
-            preds = torch.argmax(outputs, dim=1)
-            seg_metrics.update(preds, y)
+            if outputs is not None:
+                preds = torch.argmax(outputs, dim=1)
+                seg_metrics.update(preds, y)
 
             if verbose and batch_idx % 10 == 0:
                 logger.debug(
@@ -316,7 +313,7 @@ class SeismicTrainer:
             x = x.contiguous()
             y = y.contiguous()
 
-            outputs = self.model(x)
+            outputs: torch.Tensor | None = self.model(x)
             has_components = getattr(self.criterion, "return_components", False)
             if has_components:
                 setattr(self.criterion, "return_components", True)
@@ -341,8 +338,9 @@ class SeismicTrainer:
             total_loss += loss.item()
             num_batches += 1
             
-            preds = torch.argmax(outputs, dim=1)
-            seg_metrics.update(preds, y)
+            if outputs is not None:
+                preds = torch.argmax(outputs, dim=1)
+                seg_metrics.update(preds, y)
 
         avg_loss = total_loss / len(self.dataloaders["val"])
         metrics = seg_metrics.compute()
@@ -411,7 +409,7 @@ class SeismicTrainer:
         sample_input = next(iter(self.dataloaders["val"]))[0][:1]
 
         # Build registered model name
-        registered_name = format_registered_model_name(dataset_name)
+        registered_name = f"{dataset_name.strip().replace(' ', '-')}-model"
 
         logger.info(f"   Registered model name: {registered_name}")
         logger.info(f"   Model type: {model_type}")
@@ -423,7 +421,7 @@ class SeismicTrainer:
         try:
             model_info = self.mlflow_manager.log_model_with_registry(
                 model=model_to_save,
-                model_name=format_model_name(model_type, dataset_name, f"epoch_{epoch + 1}"),
+                model_name=f"{model_type}_{dataset_name}_epoch_{epoch + 1}",
                 dataset_name=dataset_name,
                 step=epoch + 1,
                 registered_model_name=registered_name,
@@ -478,7 +476,7 @@ class SeismicTrainer:
         Update model aliases based on performance.
         """
         dataset_name = self.config.dataset_name
-        registered_name = format_registered_model_name(dataset_name)
+        registered_name = f"{dataset_name.strip().replace(' ', '-')}-model"
 
         if registered_name not in self.registered_models:
             return
