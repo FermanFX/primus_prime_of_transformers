@@ -365,8 +365,9 @@ def test_set_model_alias(manager):
     manager.client.set_registered_model_alias.assert_called_once_with(
         name="halfmile-unet",
         alias="champion",
-        version=3,
+        version="3",
     )
+
 
 
 def test_get_model_by_alias(manager):
