@@ -2,7 +2,7 @@
 
 from collections.abc import Iterator  # Və ya typing import Iterator
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -141,14 +141,14 @@ def test_additional_log_methods(tb_manager: TensorBoardManager) -> None:
         tb_manager.log_graph(dummy_model, dummy_input)
         mock_graph.assert_called_once_with(dummy_model, dummy_input)
 
-
 def test_flush_and_close(tb_manager: TensorBoardManager) -> None:
     """Test flush and close methods correctly invoke SummaryWriter methods."""
-    tb_manager.writer.flush = MagicMock()
-    tb_manager.writer.close = MagicMock()
+    with (
+        patch.object(tb_manager.writer, "flush") as mock_flush,
+        patch.object(tb_manager.writer, "close") as mock_close,
+    ):
+        tb_manager.flush()
+        mock_flush.assert_called_once()
 
-    tb_manager.flush()
-    tb_manager.writer.flush.assert_called_once()
-
-    tb_manager.close()
-    tb_manager.writer.close.assert_called_once()
+        tb_manager.close()
+        mock_close.assert_called_once()
