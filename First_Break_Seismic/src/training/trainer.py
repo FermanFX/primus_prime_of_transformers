@@ -220,9 +220,9 @@ class SeismicTrainer:
             y = y.contiguous()
 
             self.optimizer.zero_grad()
-            outputs: torch.Tensor | None = self.model(x)
+            outputs: torch.Tensor = self.model(x)
 
-            has_components = getattr(self.criterion, "return_components", False)
+            has_components: bool = bool(getattr(self.criterion, "return_components", False))
             if has_components:
                 setattr(self.criterion, "return_components", True)
                 loss, components_raw = self.criterion(outputs, y)
@@ -313,8 +313,8 @@ class SeismicTrainer:
             x = x.contiguous()
             y = y.contiguous()
 
-            outputs: torch.Tensor | None = self.model(x)
-            has_components = getattr(self.criterion, "return_components", False)
+            outputs: torch.Tensor = self.model(x)
+            has_components: bool = bool(getattr(self.criterion, "return_components", False))
             if has_components:
                 setattr(self.criterion, "return_components", True)
                 loss, components_raw = self.criterion(outputs, y)
