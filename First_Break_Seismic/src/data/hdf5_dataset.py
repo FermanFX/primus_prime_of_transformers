@@ -237,7 +237,7 @@ class HDF5SeismicDataset(Dataset):
             self.group = None
 
     def __del__(self) -> None:
-       """Close the HDF5 file when the dataset object is garbage-collected."""
+        """Close the HDF5 file when the dataset object is garbage-collected."""
         self.close()
 
     def get_shot_id(self, idx: int) -> int:
