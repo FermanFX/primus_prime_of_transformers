@@ -255,26 +255,23 @@ class MLflowManager:
         registered_model_name: str,
         alias: str,
         version: int | str,
-    ):
-        """
-        Set an alias for a registered model version.
+    ) -> None:
+         """Assign an alias to a registered model version."""
 
-        Args:
-            registered_model_name: Name of the registered model
-            alias: Alias name (e.g., "champion", "challenger", "staging")
-            version: Model version number or "latest"
-        """
-        try:
-            self.client.set_registered_model_alias(
-                name=registered_model_name,
-                alias=alias,
-                version=str(version),
-            )
-            logger.info(
-                f"Set alias '{alias}' = version {version} for {registered_model_name}"
-            )
-        except (mlflow.MlflowException, OSError) as e:
-            logger.warning(f"Failed to set alias: {e}")
+         version_str = str(version)
+
+         self.client.set_registered_model_alias(
+         name=registered_model_name,
+         alias=alias,
+         version=version_str,
+    )
+
+         logger.info(
+            f"Set alias '{alias}' = version {version_str} "
+            f"for {registered_model_name}"
+    )
+
+
 
     def get_model_by_alias(
         self,
