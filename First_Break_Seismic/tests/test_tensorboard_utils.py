@@ -1,5 +1,6 @@
 """Tests for TensorBoardManager utility."""
 
+from collections.abc import Iterator  # Və ya typing import Iterator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -7,7 +8,6 @@ import numpy as np
 import pytest
 import torch
 
-from collections.abc import Iterator  # Və ya typing import Iterator
 from src.utils.tensorboard_utils import TensorBoardManager
 
 
@@ -111,7 +111,7 @@ def test_log_weights_histograms(tb_manager: TensorBoardManager) -> None:
     )
 
     # Freeze one parameter to verify requires_grad filtering
-    list(model.parameters())[0].requires_grad = False
+    next(iter(model.parameters())).requires_grad = False
 
     with patch.object(tb_manager.writer, "add_histogram") as mock_add_histogram:
         tb_manager.log_weights_histograms(model, step=15)
