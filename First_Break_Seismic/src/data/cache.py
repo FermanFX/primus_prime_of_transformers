@@ -1,5 +1,14 @@
 """
-LRU cache management for chunked dataset with level-based telemetry.
+LRU cache management for chunked dataset data with level-based telemetry.
+
+The cache stores chunk-related data in an ``OrderedDict`` and evicts the
+least recently used entry when the configured capacity is exceeded.
+
+Telemetry levels:
+    INFO:
+        Cache evictions and full cache clears.
+    DEBUG:
+        Cache get/put operations, hits, misses, and state/statistics details.
 """
 
 from collections import OrderedDict
@@ -8,24 +17,67 @@ from typing import Any
 import torch
 from loguru import logger
 
-
 class LRUCache:
     """
-    Least Recently Used (LRU) cache for chunked data with level-based telemetry.
+    Least Recently Used (LRU) cache for chunked dataset data.
+
+    Entries are stored in insertion/access order using ``OrderedDict``.
+    Accessing an existing key moves it to the end of the cache, marking it
+    as the most recently used entry. When the cache reaches ``max_size``,
+    the least recently used entry is evicted before inserting a new one.
+
+    Each cache entry is expected to be a dictionary that may contain tensors
+    under the ``"data"`` and ``"mask"`` keys. These values are explicitly
+    removed during eviction to help release references to potentially large
+    tensors. CUDA cache cleanup is also triggered when CUDA is available.
+
+    The cache maintains hit/miss statistics that can be retrieved through
+    :meth:`get_stats`.
 
     Logging:
-        - INFO: Evictions, cache clears
-        - DEBUG: Every get/put operation with state details
+        INFO:
+            Cache evictions and cache clears.
+        DEBUG:
+            GET/PUT operations, hits, misses, cache state, and statistics.
+
+    Args:
+        max_size: Maximum number of entries allowed in the cache. Defaults
+            to 3.
+
+    Attributes:
+        max_size: Maximum cache capacity.
+        cache: Ordered mapping of cache keys to cached chunk data.
+        hits: Number of successful cache lookups.
+        misses: Number of unsuccessful cache lookups.
     """
 
     def __init__(self, max_size: int = 3):
+        """
+        Initialize the LRU cache.
+
+        Args:
+            max_size: Maximum number of entries that can be stored before
+                the least recently used entry is evicted.
+        """
         self.max_size = max_size
         self.cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
         self.hits = 0
         self.misses = 0
 
     def get(self, key: int) -> dict[str, Any] | None:
-        """Get item from cache, moves to end (most recent)."""
+        """
+        Retrieve an entry from the cache.
+
+        If the key exists, the entry is marked as most recently used and
+        the cache hit counter is incremented. If the key does not exist,
+        the cache miss counter is incremented.
+
+        Args:
+            key: Integer identifier of the cached chunk.
+
+        Returns:
+            The cached chunk dictionary if ``key`` exists; otherwise ``None``.
+        """
         logger.debug(f"[Cache] GET key={key} | active_keys={list(self.cache.keys())}")
 
         if key not in self.cache:
@@ -39,7 +91,19 @@ class LRUCache:
         return self.cache[key]
 
     def put(self, key: int, value: dict[str, Any]):
-        """Put item in cache, evicts oldest if full."""
+        """
+        Insert or update an entry in the cache.
+
+        If the key already exists, its value is replaced and the entry is
+        marked as most recently used. Otherwise, the new entry is added to
+        the cache. If the cache is already at capacity, the least recently
+        used entry is evicted first.
+
+        Args:
+            key: Integer identifier of the chunk.
+            value: Cached chunk data. The value is expected to be a dictionary
+                and may contain ``"data"`` and ``"mask"`` entries.
+        """
         logger.debug(
             f"[Cache] PUT key={key} | size={len(self.cache)}/{self.max_size} | active_keys={list(self.cache.keys())}"
         )
@@ -60,7 +124,16 @@ class LRUCache:
         logger.debug(f"[Cache] ADD key={key} | new_keys={list(self.cache.keys())}")
 
     def _evict(self, key: int):
-        """Evict item from cache and free memory."""
+        """
+        Remove an entry from the cache and release associated memory.
+
+        The method removes references to ``"data"`` and ``"mask"`` from the
+        cached value when present. If CUDA is available, PyTorch's CUDA
+        allocator cache is also cleared.
+
+        Args:
+            key: Integer identifier of the entry to evict.
+        """
         if key in self.cache:
             value = self.cache[key]
             if "data" in value:
@@ -73,7 +146,13 @@ class LRUCache:
             logger.debug(f"[Cache] EVICTED key={key} (memory freed)")
 
     def clear(self):
-        """Clear all cache."""
+        """
+        Remove all entries from the cache and reset cache statistics.
+
+        Each cached entry is evicted individually so that its associated
+        data and mask references are released. Hit and miss counters are
+        reset to zero after the cache is cleared.
+        """
         logger.info(f"[Cache] CLEAR | keys={list(self.cache.keys())}")
         for key in list(self.cache.keys()):
             self._evict(key)
@@ -82,7 +161,14 @@ class LRUCache:
         self.misses = 0
 
     def get_stats(self) -> dict[str, Any]:
-        """Get cache statistics."""
+        """
+        Return the current cache statistics.
+
+        Returns:
+            A dictionary containing the current cache size, configured
+            capacity, hit/miss counts, hit rate, and active cache keys.
+            ``hit_rate`` is ``0`` when no cache lookups have been performed.
+        """
         total = self.hits + self.misses
         hit_rate = self.hits / total if total > 0 else 0
         stats = {
@@ -97,7 +183,22 @@ class LRUCache:
         return stats
 
     def __contains__(self, key: int) -> bool:
+        """
+        Check whether a key is currently present in the cache.
+
+        Args:
+            key: Integer cache key to check.
+
+        Returns:
+            ``True`` if the key exists in the cache, otherwise ``False``.
+        """
         return key in self.cache
 
     def __len__(self) -> int:
+        """
+        Return the number of entries currently stored in the cache.
+
+        Returns:
+            Current number of cached entries.
+        """
         return len(self.cache)

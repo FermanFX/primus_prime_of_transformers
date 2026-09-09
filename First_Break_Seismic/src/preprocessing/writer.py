@@ -14,7 +14,60 @@ from tqdm import tqdm
 
 
 class ChunkWriter:
-    """Write processed seismic chunks with optional checksums and validation."""
+    """
+    Manage serialization, integrity checking, and validation of processed
+    seismic data chunks.
+
+    This class is responsible for writing preprocessed seismic data and
+    corresponding segmentation masks to disk as PyTorch ``.pt`` files.
+    Each chunk contains the processed data, masks, shot identifiers, dataset
+    split information, chunk metadata, and shape information required for
+    downstream loading and validation.
+
+    The writer optionally computes a truncated SHA-256 checksum for every
+    chunk after it is written. The checksum is stored in a companion
+    ``.checksum`` file and can later be used to detect file corruption or
+    unintended modifications.
+
+    In addition to writing individual chunks, the class provides functionality
+    for validating existing chunk files. Validation checks that the serialized
+    file can be loaded successfully, required fields are present, and the
+    recorded number of shots is consistent with the stored data. When checksum
+    computation is enabled and a checksum file is available, the stored
+    checksum is also compared against a newly computed checksum.
+
+    The class supports both sequential and parallel writing of multiple chunks.
+    Parallel writing uses a :class:`concurrent.futures.ThreadPoolExecutor`,
+    which can improve throughput when processing a large number of chunks.
+
+    Attributes:
+        chunk_dir: Directory where serialized chunk files and their optional
+            checksum files are stored.
+        compute_checksums: Whether SHA-256 checksums should be generated for
+            written chunks and validated when verifying existing chunks.
+
+    Notes:
+        Chunk files are serialized using :func:`torch.save` with pickle
+        protocol 4. The expected chunk structure includes at least ``data``,
+        ``mask``, ``shot_ids``, ``split_idx``, ``chunk_id``, and ``n_shots``.
+        Additional metadata can be stored using the ``metadata`` argument of
+        :meth:`write_chunk`.
+
+    Example:
+        >>> writer = ChunkWriter(
+        ...     chunk_dir=Path("processed_chunks"),
+        ...     compute_checksums=True,
+        ... )
+        >>> filepath = writer.write_chunk(
+        ...     data_batch=data,
+        ...     mask_batch=masks,
+        ...     shot_ids=[1, 2, 3],
+        ...     chunk_id=0,
+        ...     split="train",
+        ... )
+        >>> writer.verify_chunk(filepath)
+        True
+    """
 
     def __init__(
         self,

@@ -7,15 +7,93 @@ from loguru import logger
 
 
 class ShotProcessor:
-    """Process individual shots with vectorized operations and validation.
+    """Process and validate seismic shot data and first-break picks.
+
+    This class provides utilities for preprocessing individual seismic shots,
+    validating first-break pick values, generating three-class segmentation
+    masks around the first-break locations, and collecting processing
+    statistics.
+
+    Each shot is expected to contain a variable number of traces and a fixed
+    number of time samples per trace. During processing, shots are either
+    padded with zero-valued traces or cropped to ``target_traces`` so that all
+    processed shots have a consistent shape.
+
+    First-break picks are validated against the configured sample range.
+    Invalid picks are clipped to the valid sample index range for mask
+    generation, while the original validity information is preserved in the
+    returned statistics.
+
+    The generated segmentation mask contains three classes:
+
+        0:
+            Samples before the first-break strip or traces with invalid picks.
+
+        1:
+            Samples occurring after the first-break strip.
+
+        2:
+            Samples within the configured strip around the first-break pick.
+
+    Mask generation is implemented using vectorized NumPy operations rather
+    than per-sample Python loops for improved performance on large seismic
+    datasets.
+
+    The class also performs basic mask validation, including checking whether
+    a first-break strip exists and whether the strip is reasonably aligned
+    with the corresponding pick. Per-shot statistics are accumulated in
+    ``self.stats`` and can be summarized using :meth:`get_all_stats`.
 
     Attributes:
-        target_traces (int): Target number of traces per shot (padded or cropped).
-        n_samples (int): Number of time samples per trace.
-        strip_width (int): Width of the target strip around the first break pick.
-        half_width (int): Half of the strip width, used for mask calculations.
-        log_level (str): Logging level threshold for debug telemetry.
-        stats (list[dict]): Accumulated processing statistics for processed shots.
+        target_traces (int):
+            Target number of traces for every processed shot. Shots with
+            fewer traces are zero-padded, while shots with more traces are
+            cropped.
+
+        n_samples (int):
+            Number of time samples expected in each trace.
+
+        strip_width (int):
+            Width of the first-break strip used for class-2 mask generation.
+
+        half_width (int):
+            Half of ``strip_width`` used to calculate the region around each
+            first-break pick.
+
+        log_level (str):
+            Logging verbosity threshold used for optional processing and
+            debugging messages.
+
+        stats (list[dict]):
+            Accumulated per-shot processing statistics. The list is populated
+            by :meth:`process_shot` and can be cleared using
+            :meth:`reset_stats`.
+
+    Example:
+        >>> processor = ShotProcessor(
+        ...     target_traces=1578,
+        ...     n_samples=751,
+        ...     strip_width=8,
+        ... )
+        >>> processed_data, mask, stats = processor.process_shot(
+        ...     shot_data,
+        ...     shot_picks,
+        ...     shot_id=1,
+        ... )
+        >>> processed_data.shape
+        (1578, 751)
+        >>> mask.shape
+        (1578, 751)
+
+    Notes:
+        ``shot_data`` is converted to ``float32`` before being returned.
+        The generated segmentation mask uses ``int64`` values.
+
+        Pick values are considered valid when they satisfy:
+
+            0 < pick < n_samples
+
+        Invalid picks are represented as class 0 in the generated mask.
     """
 
     def __init__(

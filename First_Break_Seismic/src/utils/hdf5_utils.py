@@ -1,5 +1,13 @@
 """
-HDF5 utility functions for seismic data.
+Utility functions for reading, processing, and validating seismic data
+stored in HDF5 files.
+
+The HDF5 files are expected to contain a ``TRACE_DATA/DEFAULT`` group
+with the following datasets:
+
+- ``SHOTID``: Shot identifier for each trace.
+- ``data_array``: Seismic trace samples.
+- ``SPARE1``: Pick value associated with each trace.
 """
 
 
@@ -10,12 +18,27 @@ from loguru import logger
 
 def load_shot_indices(hdf5_path: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Load shot indices from HDF5 file.
+    Load shot identifiers and their trace index ranges from an HDF5 file.
+
+    The function reads the ``SHOTID`` dataset and identifies the unique shot
+    IDs together with the start and end indices of the traces belonging to
+    each shot. The returned indices can be used to efficiently retrieve
+    individual shots from the trace datasets.
+
+    Args:
+        hdf5_path: Path to the HDF5 file.
 
     Returns:
-        unique_shots: Array of unique shot IDs
-        start_indices: Start index of each shot
-        end_indices: End index of each shot
+        A tuple containing:
+            unique_shots: 1-D array of unique shot IDs.
+            start_indices: 1-D array containing the inclusive start index
+                of each shot.
+            end_indices: 1-D array containing the exclusive end index of
+                each shot.
+
+    Raises:
+        KeyError: If the expected HDF5 groups or datasets are missing.
+        OSError: If the HDF5 file cannot be opened.
     """
     with h5py.File(hdf5_path, "r") as f:
         group = f["TRACE_DATA"]["DEFAULT"]
@@ -36,12 +59,34 @@ def load_shot_data(
     n_samples: int = 751,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Load a single shot's data and picks from HDF5.
+    Load seismic traces and associated picks for a single shot.
+
+    The function reads traces from ``data_array`` and their corresponding
+    pick values from ``SPARE1`` within the specified index range. If the
+    shot contains fewer traces than ``target_traces``, both arrays are
+    zero-padded to the requested number of traces.
+
+    Args:
+        hdf5_path: Path to the HDF5 file.
+        start_idx: Inclusive start index of the shot traces.
+        end_idx: Exclusive end index of the shot traces.
+        target_traces: Target number of traces in the returned arrays.
+            Defaults to 1578.
+        n_samples: Number of samples expected per trace. Defaults to 751.
 
     Returns:
-        shot_data: (target_traces, n_samples) float32
-        shot_picks: (target_traces,) float32
+        A tuple containing:
+            shot_data: Seismic trace data with shape
+                ``(target_traces, n_samples)`` when padding is required.
+            shot_picks: Pick values with shape ``(target_traces,)`` when
+                padding is required.
+
+    Raises:
+        KeyError: If the expected HDF5 groups or datasets are missing.
+        OSError: If the HDF5 file cannot be opened.
+        ValueError: If the requested indices or dataset dimensions are
     """
+        
     with h5py.File(hdf5_path, "r") as f:
         group = f["TRACE_DATA"]["DEFAULT"]
 
@@ -68,12 +113,46 @@ def get_trace_counts(
     start_indices: np.ndarray,
     end_indices: np.ndarray,
 ) -> np.ndarray:
-    """Get trace counts for each shot."""
+    """
+    Calculate the number of traces associated with each shot.
+
+    The trace count is calculated as the difference between the exclusive
+    end index and the inclusive start index of each shot.
+
+    Args:
+        hdf5_path: Path to the HDF5 file. Included for API consistency;
+            it is not accessed by this function.
+        unique_shots: Array containing the unique shot IDs. Included for
+            API consistency; it is not accessed by this function.
+        start_indices: Inclusive start indices for each shot.
+        end_indices: Exclusive end indices for each shot.
+
+    Returns:
+        1-D array containing the number of traces for each shot.
+
+    Raises:
+        ValueError: If ``start_indices`` and ``end_indices`` have
+            incompatible shapes.
+    """
     return end_indices - start_indices
 
 
 def validate_hdf5(hdf5_path: str) -> bool:
-    """Validate HDF5 file structure."""
+    """
+    Validate the required structure of a seismic HDF5 file.
+
+    The function checks whether the file contains the ``TRACE_DATA/DEFAULT``
+    group and the required ``data_array``, ``SHOTID``, and ``SPARE1``
+    datasets.
+
+    Args:
+        hdf5_path: Path to the HDF5 file to validate.
+
+    Returns:
+        ``True`` if the required HDF5 structure is present; otherwise,
+        ``False``. Any file access or validation error is logged and
+        results in ``False``.
+    """
     try:
         with h5py.File(hdf5_path, "r") as f:
             if "TRACE_DATA" not in f:

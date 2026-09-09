@@ -1,5 +1,9 @@
 """
-Manifest generation for chunked datasets with checksums and versioning.
+Utilities for generating, saving, loading, validating, and inspecting
+manifests for chunked datasets.
+
+A manifest stores dataset metadata, preprocessing configuration, semantic
+version information, chunk-level metadata, file sizes, and checksums.
 """
 
 import hashlib
@@ -13,19 +17,20 @@ from loguru import logger
 
 def compute_checksum(filepath: Path) -> str:
     """
-    Compute a truncated SHA-256 checksum for a file.
+    Calculate a truncated SHA-256 checksum for a file.
 
-    The file is read in blocks to avoid loading the entire file into memory.
+    The file is processed incrementally in fixed-size blocks so that large
+    files do not need to be loaded entirely into memory.
 
     Args:
-        filepath: Path to the file for which the checksum is calculated.
+        filepath: Path to the file whose checksum should be calculated.
 
     Returns:
-        First 16 hexadecimal characters of the SHA-256 checksum.
+        The first 16 hexadecimal characters of the SHA-256 digest.
 
     Raises:
-        FileNotFoundError: If the specified file does not exist.
-        OSError: If the file cannot be read.
+        FileNotFoundError: If ``filepath`` does not exist.
+        OSError: If the file cannot be opened or read.
     """
     sha256 = hashlib.sha256()
     with open(filepath, "rb") as f:
@@ -36,17 +41,21 @@ def compute_checksum(filepath: Path) -> str:
 
 def get_next_version(manifest_path: Path) -> str:
     """
-    Determine the next patch version for an existing manifest.
+    Determine the next patch version based on an existing manifest.
+
+    If the manifest exists and contains a valid semantic version in
+    ``MAJOR.MINOR.PATCH`` format, only the patch component is incremented.
 
     Args:
         manifest_path: Path to the existing manifest JSON file.
 
     Returns:
-        Next semantic version string in ``MAJOR.MINOR.PATCH`` format.
+        The next version string. If the manifest does not exist or its
+        version cannot be parsed, ``"1.0.0"`` is returned.
 
-    Note:
-        If the manifest does not exist or its version cannot be parsed,
-        ``1.0.0`` is returned.
+    Examples:
+        If the existing version is ``"1.2.3"``, this function returns
+        ``"1.2.4"``.
     """
     if not manifest_path.exists():
         return "1.0.0"
@@ -85,23 +94,30 @@ def generate_manifest(
     increment_version: bool = True,
 ) -> dict[str, Any]:
     """
-    Generate metadata for a chunked seismic dataset.
+    Generate a manifest containing metadata for a chunked dataset.
 
-    The manifest contains dataset information, configuration, version,
-    chunk metadata, file sizes, and checksums.
+    For every chunk, the manifest records its identifier, filename, split,
+    shot IDs, shot count, index range, file size, and checksum. The manifest
+    also stores dataset-level metadata and preprocessing configuration.
 
     Args:
-        dataset_name: Name of the processed dataset.
-        chunks: Mapping of split names to chunk definitions.
-        config: Configuration used during preprocessing.
-        chunk_dir: Directory containing chunk files.
-        total_shots: Total number of shots.
-        total_traces: Total number of traces.
-        increment_version: Whether to increment the existing manifest
-            version. If False, version ``1.0.0`` is used.
+        dataset_name: Name or identifier of the processed dataset.
+        chunks: Mapping of split names to lists of chunk metadata dictionaries.
+        config: Configuration used during dataset preprocessing.
+        chunk_dir: Directory containing the generated chunk files.
+        total_shots: Total number of shots across all dataset chunks.
+        total_traces: Total number of traces in the dataset.
+        increment_version: If ``True``, derive the version by incrementing
+            the existing manifest's patch version. If ``False``, use
+            ``"1.0.0"``.
 
     Returns:
-        Dictionary containing the generated manifest.
+        A dictionary containing the complete manifest metadata.
+
+    Notes:
+        Missing chunk files are still included in the manifest. Their
+        ``file_size_mb`` is set to ``0`` and their ``checksum`` is set
+        to ``None``.
     """
     manifest_path = chunk_dir / "manifest.json"
 
@@ -150,14 +166,19 @@ def save_manifest(
     path: Path,
 ) -> None:
     """
-    Save a manifest to JSON and attach its checksum.
+    Serialize a manifest to JSON and attach its checksum.
 
-    The manifest is initially written without a checksum. Its checksum
-    is then calculated and added before the final write.
+    The manifest is first written without a checksum. The checksum of that
+    exact representation is then calculated and stored in the manifest
+    before the final JSON file is written.
 
     Args:
-        manifest: Manifest dictionary to save.
-        path: Destination path for the JSON manifest.
+        manifest: Manifest dictionary to serialize.
+        path: Destination path for the manifest JSON file.
+
+    Raises:
+        OSError: If the destination directory or file cannot be created
+            or written.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -311,14 +332,18 @@ def get_chunk_paths(
     chunk_dir: Path,
 ) -> dict[str, list[Path]]:
     """
-    Build chunk file paths grouped by dataset split.
+    Build file paths for all chunks grouped by dataset split.
 
     Args:
-        manifest: Manifest containing chunk metadata.
+        manifest: Manifest containing chunk metadata and filenames.
         chunk_dir: Directory containing the chunk files.
 
     Returns:
-        Dictionary mapping split names to lists of chunk file paths.
+        A dictionary mapping each split name to a list of corresponding
+        chunk file paths.
+
+    Example:
+        ``{"train": [Path("chunk_001_train.pt")], "val": [...]}``
     """
     paths: dict[str, list[Path]] = {}
 
