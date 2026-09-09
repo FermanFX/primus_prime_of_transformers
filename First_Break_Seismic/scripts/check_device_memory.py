@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Device Memory Detection Script - Complete Training Recommendations
 Detects memory and recommends optimal batch_size, cache_size, and memory limits.
