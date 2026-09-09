@@ -262,7 +262,7 @@ def test_combo_loss_component_values():
 
     loss_fn.return_components = True
 
-    total_loss, components = loss_fn(logits, target)
+    _total_loss, components = loss_fn(logits, target)
 
     assert torch.isfinite(
         torch.tensor(components["total"])
