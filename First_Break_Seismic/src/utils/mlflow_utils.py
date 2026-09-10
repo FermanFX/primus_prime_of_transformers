@@ -306,7 +306,7 @@ class MLflowManager:
         filter_string: str | None = None,
         order_by: list[dict[str, Any]] | None = None,
         max_results: int = 10,
-    ) -> list[Any]:
+    ) -> Any:
         """
         Search and compare logged models.
 
@@ -316,7 +316,7 @@ class MLflowManager:
             max_results: Maximum number of results
 
         Returns:
-            List of model objects
+            Search results
         """
         try:
             results = mlflow.search_logged_models(
