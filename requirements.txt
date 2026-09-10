@@ -192,3 +192,4 @@ types-PyYAML>=6.0.12.12
 types-tqdm>=4.66.0.0
 psutil
 types-psutil
+pandas-stubs
