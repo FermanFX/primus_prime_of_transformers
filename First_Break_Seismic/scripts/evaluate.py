@@ -286,7 +286,12 @@ def main(
 
         logger.info("\n  Class-wise IoU:")
         class_names = ["Before", "After", "Strip"]
-        for i, (name, iou) in enumerate(zip(class_names, seg_results["iou_per_class"])):
+        iou_per_class = seg_results["iou_per_class"]
+        
+        if isinstance(iou_per_class, float):
+            raise TypeError("Expected iou_per_class to be a list of floats")
+        
+        for name, iou in zip(class_names, iou_per_class):
             logger.info(f"    {name}: {iou:.4f}")
 
         logger.info(f"\n📊 FIRST-BREAK METRICS ({split_name.upper()})")
