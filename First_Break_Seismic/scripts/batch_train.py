@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Batch training pipeline with config file support and memory error recovery.
 """
