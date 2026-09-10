@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Run model pairs across all datasets WITH graceful fallback.
 Uses batch_train.py internally for memory recovery.
