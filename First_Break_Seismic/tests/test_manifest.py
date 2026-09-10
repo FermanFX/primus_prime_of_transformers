@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -407,7 +408,7 @@ class TestSaveLoadManifest:
         """Saving must create the file and attach a checksum."""
         path = tmp_path / "nested" / "manifest.json"
 
-        manifest = {
+        manifest: dict[str, Any] = {
             "dataset": "TestDataset",
             "version": "1.0.0",
             "created": "2026-01-01T00:00:00+00:00",
