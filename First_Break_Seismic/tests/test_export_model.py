@@ -12,7 +12,6 @@ import pytest
 
 from scripts.export_model import main
 
-
 @pytest.fixture
 def cli_runner() -> click.testing.CliRunner:
     """Fixture providing an isolated Click CLI runner."""
