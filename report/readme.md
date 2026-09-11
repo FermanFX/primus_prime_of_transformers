@@ -1,3 +1,3 @@
-# Presentation Directory 
+# Report Directory (`primus_prime_of_transformers/First_Break_Seismic/report/`)
 
-This directory serves as the repository for storing presentation slides, project summaries, visual graphics, and documentation files used to showcase the seismic first-break picking pipeline and model results.
+This directory stores project reports, documentation summaries, and performance analysis documents generated from data processing and model evaluation runs.
