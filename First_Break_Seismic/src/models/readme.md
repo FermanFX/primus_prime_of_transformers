@@ -174,3 +174,22 @@ Recommended metrics include:
 - Validation IoU / Dice score
 
 This allows the lightweight models to be compared fairly against the standard `UNet`, `MobileUNet`, and `EfficientUNet` architectures.
+
+# Models Directory (`First_Break_Seismic/src/models/`)
+
+This directory houses the neural network architectures, custom variants, and factory loaders designed for seismic trace analysis and first-break picking pipelines. It contains various scales of U-Net models optimized for different resource constraints and performance requirements.
+
+## Model Files Overview
+
+* **`__init__.py`**: Marks the directory as a Python package and manages module-level namespace exports for network architectures.
+* **`efficient_unet.py`**: Implements an optimized variant of the U-Net architecture focused on computational efficiency and reduced parameter counts.
+* **`factory.py`**: Provides a centralized factory class or function to instantiate different model architectures dynamically based on configuration files.
+* **`light_unet.py`**: Contains a lightweight U-Net model configuration designed for faster training iterations and reduced memory footprints.
+* **`mobilenet.py`**: Integrates MobileNet-based building blocks or encoder backbones for mobile-friendly or resource-constrained environments.
+* **`mps_light_unet.py`**: Implements a light U-Net variant optimized specifically for Apple Silicon (MPS - Metal Performance Shaders) hardware acceleration.
+* **`nano_unet.py`**: Features an ultra-compact nano-scale U-Net architecture built for rapid prototyping and extreme hardware limitations.
+* **`pico_unet.py`**: Contains a pico-scale U-Net variant optimized for minimal memory consumption and rapid inference.
+* **`readme.md`**: Provides architectural documentation outlining the structural design of the models directory and its internal network variants.
+* **`tiny_unet.py`**: Implements a reduced-capacity tiny U-Net model suitable for small-scale seismic datasets and fast testing.
+* **`unet.py`**: Implements the standard, full-scale U-Net segmentation architecture tailored for processing multi-channel seismic traces and generating precise pick masks.
+
