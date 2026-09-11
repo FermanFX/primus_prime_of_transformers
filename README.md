@@ -15,7 +15,7 @@ The training system supports:
 - MLflow experiment tracking
 - Model evaluation and visualization
 - ONNX / TorchScript export
-
+deploy link // https://check-deploy-ros7hqundwlxjin6ercsmr.streamlit.app/
 ---
 
 ## 2. Repository Structure
