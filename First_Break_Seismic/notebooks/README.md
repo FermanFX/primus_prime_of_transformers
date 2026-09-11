@@ -1,4 +1,4 @@
-# Notebooks Directory (`primus_prime_of_transformers/First_Break_Seismic/notebooks/`)
+# Notebooks Directory (`First_Break_Seismic/notebooks/`)
 
 This directory contains interactive Jupyter notebooks dedicated to exploratory data analysis (EDA), prototype visualization, and algorithmic experimentation on raw seismic trace assets[cite: 1]. These notebooks provide an intuitive sandbox for researchers to inspect HDF5 data structures, verify coordinate transformations, and evaluate first break arrival curves before production script implementation[cite: 1].
 
