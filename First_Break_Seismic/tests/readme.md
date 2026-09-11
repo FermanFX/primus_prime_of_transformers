@@ -1,4 +1,4 @@
-# Tests Directory (`primus_prime_of_transformers/First_Break_Seismic/tests/`)
+# Tests Directory (`First_Break_Seismic/tests/`)
 
 This comprehensive test suite directory contains automated unit, integration, and end-to-end test scripts designed to ensure the reliability, structural integrity, and correctness of the entire seismic first break processing pipeline[cite: 1]. Leveraging `pytest`, the test files validate everything from individual module functions to complex CLI executions and model training loops[cite: 1].
 
